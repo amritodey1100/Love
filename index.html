@@ -217,6 +217,8 @@
         user-select: none;
         display: inline-block;
         margin: 0 10px;
+        position: relative;
+        z-index: 10;
       }
 
       .heart-button:hover {
@@ -266,6 +268,27 @@
         font-size: 2rem;
         font-weight: 600;
         color: #ffd700;
+        transition: all 0.3s ease;
+      }
+
+      .counter-number.updated {
+        animation: counterGlow 0.8s ease-out;
+      }
+
+      @keyframes counterGlow {
+        0% {
+          transform: scale(1);
+          color: #ffd700;
+        }
+        50% {
+          transform: scale(1.2);
+          color: #ff69b4;
+          text-shadow: 0 0 20px rgba(255, 105, 180, 0.8);
+        }
+        100% {
+          transform: scale(1);
+          color: #ffd700;
+        }
       }
 
       /* Animations */
@@ -424,6 +447,15 @@
           margin: 0 8px;
           display: inline-block;
           padding: 10px;
+          min-width: 60px;
+          min-height: 60px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(5px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .love-counter {
@@ -441,22 +473,8 @@
           font-size: 1.6rem;
         }
 
-        /* Adjust floating hearts for mobile */
         .heart {
           font-size: 16px;
-        }
-
-        /* Better touch targets */
-        .heart-button {
-          min-width: 60px;
-          min-height: 60px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(5px);
-          border: 1px solid rgba(255, 255, 255, 0.2);
         }
       }
 
@@ -482,7 +500,6 @@
         }
       }
 
-      /* Landscape mobile orientation */
       @media (max-height: 500px) and (orientation: landscape) {
         .header {
           margin-bottom: 30px;
@@ -520,6 +537,8 @@
         background: white;
         border-radius: 50%;
         animation: sparkle 1.5s ease-in-out infinite;
+        pointer-events: none;
+        z-index: 5;
       }
 
       @keyframes sparkle {
@@ -624,9 +643,9 @@
       <section class="interactive-section">
         <p class="click-hearts">Click the hearts to send your love! 💖</p>
         <div>
-          <span class="heart-button" onclick="clickHeart(this)">💖</span>
-          <span class="heart-button" onclick="clickHeart(this)">💕</span>
-          <span class="heart-button" onclick="clickHeart(this)">💗</span>
+          <span class="heart-button" data-heart="1">💖</span>
+          <span class="heart-button" data-heart="2">💕</span>
+          <span class="heart-button" data-heart="3">💗</span>
         </div>
 
         <div class="love-counter">
@@ -637,6 +656,9 @@
     </div>
 
     <script>
+      // Initialize love counter
+      let loveCount = 0;
+
       // Floating Hearts Animation
       function createFloatingHeart() {
         const heart = document.createElement("div");
@@ -649,28 +671,34 @@
         document.getElementById("floatingHearts").appendChild(heart);
 
         setTimeout(() => {
-          heart.remove();
+          if (heart.parentNode) {
+            heart.remove();
+          }
         }, 8000);
       }
 
-      // Create floating hearts continuously
-      // Remove the original setInterval - it's now handled by adjustHeartCreation()
-
-      // Interactive Hearts
-      let loveCount = 0;
-
+      // Interactive Hearts - Fixed version
       function clickHeart(element) {
+        // Prevent multiple rapid clicks
+        if (element.classList.contains("clicked")) {
+          return;
+        }
+
         element.classList.add("clicked");
         loveCount++;
-        document.getElementById("loveCounter").textContent = loveCount;
+
+        const counterElement = document.getElementById("loveCounter");
+        counterElement.textContent = loveCount;
+        counterElement.classList.add("updated");
 
         // Create sparkle effect
         createSparkles(element);
 
-        // Remove animation class
+        // Remove animation classes
         setTimeout(() => {
           element.classList.remove("clicked");
-        }, 600);
+          counterElement.classList.remove("updated");
+        }, 800);
       }
 
       function createSparkles(element) {
@@ -680,8 +708,12 @@
         for (let i = 0; i < sparkleCount; i++) {
           const sparkle = document.createElement("div");
           sparkle.className = "sparkle";
-          sparkle.style.left = rect.left + rect.width / 2 + "px";
-          sparkle.style.top = rect.top + rect.height / 2 + "px";
+
+          const centerX = rect.left + rect.width / 2;
+          const centerY = rect.top + rect.height / 2;
+
+          sparkle.style.left = centerX + "px";
+          sparkle.style.top = centerY + "px";
           sparkle.style.animationDelay = i * 0.1 + "s";
 
           // Random direction
@@ -690,20 +722,44 @@
           const x = Math.cos((angle * Math.PI) / 180) * distance;
           const y = Math.sin((angle * Math.PI) / 180) * distance;
 
-          sparkle.style.setProperty("--x", x + "px");
-          sparkle.style.setProperty("--y", y + "px");
+          setTimeout(() => {
+            sparkle.style.transform = `translate(${x}px, ${y}px)`;
+          }, 50);
 
           document.body.appendChild(sparkle);
 
           setTimeout(() => {
-            sparkle.remove();
+            if (sparkle.parentNode) {
+              sparkle.remove();
+            }
           }, 1500);
         }
       }
 
+      // Event listeners for heart buttons
+      document.addEventListener("DOMContentLoaded", function () {
+        const heartButtons = document.querySelectorAll(".heart-button");
+
+        heartButtons.forEach((button) => {
+          // Mouse click
+          button.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            clickHeart(this);
+          });
+
+          // Touch events for mobile
+          button.addEventListener("touchstart", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            clickHeart(this);
+          });
+        });
+      });
+
       // Add some initial sparkles around the page
       function addRandomSparkles() {
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 15; i++) {
           setTimeout(() => {
             const sparkle = document.createElement("div");
             sparkle.className = "sparkle";
@@ -714,80 +770,69 @@
             document.body.appendChild(sparkle);
 
             setTimeout(() => {
-              sparkle.remove();
+              if (sparkle.parentNode) {
+                sparkle.remove();
+              }
             }, 3000);
-          }, i * 200);
+          }, i * 150);
         }
       }
 
-      // Start sparkles when page loads
-      window.addEventListener("load", () => {
-        setTimeout(addRandomSparkles, 1000);
-        setInterval(addRandomSparkles, 10000);
-      });
-
-      // Add interactive elements for both mouse and touch
+      // Mouse interaction sparkles
       document.addEventListener("mousemove", (e) => {
-        if (Math.random() < 0.02) {
-          // 2% chance
+        if (Math.random() < 0.015) {
           const sparkle = document.createElement("div");
           sparkle.className = "sparkle";
           sparkle.style.left = e.clientX + "px";
           sparkle.style.top = e.clientY + "px";
-          sparkle.style.pointerEvents = "none";
 
           document.body.appendChild(sparkle);
 
           setTimeout(() => {
-            sparkle.remove();
+            if (sparkle.parentNode) {
+              sparkle.remove();
+            }
           }, 1500);
         }
       });
 
       // Touch interaction for mobile
       document.addEventListener("touchmove", (e) => {
-        if (Math.random() < 0.03) {
-          // Slightly higher chance on mobile
+        if (Math.random() < 0.02) {
           const touch = e.touches[0];
           const sparkle = document.createElement("div");
           sparkle.className = "sparkle";
           sparkle.style.left = touch.clientX + "px";
           sparkle.style.top = touch.clientY + "px";
-          sparkle.style.pointerEvents = "none";
 
           document.body.appendChild(sparkle);
 
           setTimeout(() => {
-            sparkle.remove();
+            if (sparkle.parentNode) {
+              sparkle.remove();
+            }
           }, 1500);
         }
       });
-
-      // Prevent scrolling issues on mobile
-      document.addEventListener(
-        "touchstart",
-        function (e) {
-          if (e.target.classList.contains("heart-button")) {
-            e.preventDefault();
-          }
-        },
-        { passive: false }
-      );
 
       // Optimize floating hearts for mobile performance
       let heartInterval;
       function adjustHeartCreation() {
         if (heartInterval) clearInterval(heartInterval);
 
-        // Fewer hearts on mobile for better performance
         const isMobile = window.innerWidth <= 768;
         const interval = isMobile ? 1200 : 800;
 
         heartInterval = setInterval(createFloatingHeart, interval);
       }
 
-      // Adjust on load and resize
-      window.addEventListener("load", adjustHeartCreation);
+      // Initialize everything when page loads
+      window.addEventListener("load", () => {
+        adjustHeartCreation();
+        setTimeout(addRandomSparkles, 1000);
+        setInterval(addRandomSparkles, 12000);
+      });
+
       window.addEventListener("resize", adjustHeartCreation);
     </script>
   </body>
